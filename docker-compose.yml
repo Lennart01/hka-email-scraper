@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   owa-email-extractor:
-    build: .
+    image: ghcr.io/lennart01/hka-email-scraper:master
     volumes:
       - .:/app
     environment:
