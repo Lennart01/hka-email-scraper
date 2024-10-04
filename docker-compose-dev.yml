@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  owa-email-extractor:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      OWA_USERNAME: ${OWA_USERNAME}
+      OWA_PASSWORD: ${OWA_PASSWORD}
+      TOTP_SECRET: ${TOTP_SECRET}
+      WEBHOOK_URL: ${WEBHOOK_URL}
