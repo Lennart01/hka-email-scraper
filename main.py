@@ -8,6 +8,8 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 EMAILS_FILE = "emails.json"
 SENT_EMAILS_FILE = "sent_emails.json"
@@ -29,20 +31,22 @@ def get_emails(totp_secret, username, password):
         # Open the login page
         driver.get("https://owa.h-ka.de/owa/auth/logon.aspx")
 
-        # Find and fill the username field
+        # Wait for the username field to be present and fill it
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "username")))
         username_field = driver.find_element(By.NAME, "username")
         username_field.send_keys(str(username))
 
-        # Find and fill the password field
+        # Wait for the password field to be present and fill it
         password_field = driver.find_element(By.NAME, "password")
         password_field.send_keys(totp_token)  # Use the TOTP token as the password
 
         # Submit the form
         password_field.submit()
 
-        # Wait for the page to load
-        time.sleep(5)  # Adjust the sleep time as needed
+        time.sleep(3)
 
+        # Wait for the next username field to be present
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "username")))
         username_field = driver.find_element(By.NAME, "username")
         username_field.send_keys(str(username))
 
@@ -51,7 +55,8 @@ def get_emails(totp_secret, username, password):
 
         password_field.submit()
 
-        time.sleep(5)
+        # Wait for the email list container to be present
+        WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div._lvv_w")))
 
         # Locate the email list container
         email_list = driver.find_elements(By.CSS_SELECTOR, "div._lvv_w")
@@ -59,17 +64,21 @@ def get_emails(totp_secret, username, password):
         emails = []
         # Extract details of the first 10 emails
         for email in email_list[:10]:
-            sender = email.find_element(By.CSS_SELECTOR, "span.lvHighlightFromClass").text
-            subject = email.find_element(By.CSS_SELECTOR, "span.lvHighlightSubjectClass").text
-            time_received = email.find_element(By.CSS_SELECTOR, "span._lvv_M").text
-            content = email.find_element(By.CSS_SELECTOR, "span.ms-font-weight-semilight").text
-            print(f"Sender: {sender}, Subject: {subject}, Time: {time_received}, Content: {content}")
-            emails.append({
-                "sender": sender,
-                "subject": subject,
-                "time_received": time_received,
-                "content": content
-            })
+            try:
+                sender = email.find_element(By.CSS_SELECTOR, "span.lvHighlightFromClass").text
+                subject = email.find_element(By.CSS_SELECTOR, "span.lvHighlightSubjectClass").text
+                time_received = email.find_element(By.CSS_SELECTOR, "span._lvv_M").text
+                content = email.find_element(By.CSS_SELECTOR, "span.ms-font-weight-semilight").text
+                print(f"Sender: {sender}, Subject: {subject}, Time: {time_received}, Content: {content}")
+                emails.append({
+                    "sender": sender,
+                    "subject": subject,
+                    "time_received": time_received,
+                    "content": content
+                })
+            except Exception as e:
+                print(f"An error occurred while extracting email details: {e}")
+
         # Save Emails to JSON
         with open(EMAILS_FILE, "w") as f:
             f.write(JSON.dumps(emails))
@@ -85,8 +94,10 @@ def load_sent_emails():
     return []
 
 def save_sent_emails(emails):
+    existing_emails = load_sent_emails()
+    all_emails = existing_emails + emails
     with open(SENT_EMAILS_FILE, "w") as f:
-        f.write(JSON.dumps(emails))
+        f.write(JSON.dumps(all_emails))
 
 def send_update():
     try:
@@ -121,7 +132,7 @@ def send_update():
                 print(f"Failed to send email. Status Code: {response.status_code}")
 
         # Update sent emails
-        save_sent_emails(emails)
+        save_sent_emails(new_emails)
     except Exception as e:
         print("An error occurred while sending the update:", e)
 
