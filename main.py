@@ -17,9 +17,7 @@ SENT_EMAILS_FILE = "sent_emails.json"
 def get_emails(totp_secret, username, password):
     # Generate TOTP token
     totp = pyotp.TOTP(str(totp_secret))
-    totp_token = totp.now()
 
-    print("TOTP Token:", totp_token)
 
     # Set up Firefox options for headless mode
     options = FirefoxOptions()
@@ -38,7 +36,7 @@ def get_emails(totp_secret, username, password):
 
         # Wait for the password field to be present and fill it
         password_field = driver.find_element(By.NAME, "password")
-        password_field.send_keys(totp_token)  # Use the TOTP token as the password
+        password_field.send_keys(totp.now())
 
         # Submit the form
         password_field.submit()
